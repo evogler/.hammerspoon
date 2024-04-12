@@ -71,18 +71,23 @@ hs.hotkey.bind({ "ctrl", "alt", "cmd" }, "R", function()
 end)
 
 function debugAllWindows()
+	print("debugAllWindows()")
 	local windows = hs.window.allWindows()
+	local res = ""
 	for _, win in ipairs(windows) do
 		app = win:application():name()
 		title = win:title()
 
 		local str = '{ { "" }, { { app = "' .. app .. '", title = "' .. title .. '"} } }'
 		print(str)
+		res = res .. "\n" .. str
 
 		-- For even more detail, including methods and properties not directly accessible:
 		-- print(hs.inspect(getmetatable(win)))
 	end
+	hs.pasteboard.writeObjects(res)
 end
+hs.hotkey.bind({ "ctrl", "alt", "cmd" }, "D", debugAllWindows)
 
 function toBinary(num)
 	local bin = "" -- Create an empty string to store the binary form
@@ -116,27 +121,47 @@ function mapContains(map, val)
 	return false
 end
 
-function compareArrays(arr1, arr2)
-	if #arr1 ~= #arr2 then
+function index(arrOrStr, index)
+	if type(arrOrStr) == "string" then
+		if index > #arrOrStr then
+			return nil
+		end
+		return arrOrStr:sub(index, index)
+	elseif type(arrOrStr) == "table" then
+		return arrOrStr[index]
+	end
+end
+
+function compareIndexable(a, b)
+	if #a ~= #b then
 		return false
 	end
-	for index, val in ipairs(arr1) do
-		if val ~= arr2[index] then
+	for i = 1, #a do
+		if index(a, i) ~= index(b, i) then
 			return false
 		end
 	end
 	return true
-end
-
------------------------------------------
+end -----------------------------------------
 --  ___  ___ _ __(_) __ _| (_)_______  --
 -- / __|/ _ \ '__| |/ _` | | |_  / _ \ --
 -- \__ \  __/ |  | | (_| | | |/ /  __/ --
 -- |___/\___|_|  |_|\__,_|_|_/___\___| --
 -----------------------------------------
 
+function isSequentialTable(t)
+	local i = 0
+	for _ in pairs(t) do
+		i = i + 1
+		if t[i] == nil then
+			return false
+		end
+	end
+	return true
+end
+
 function serializeTable(val, name, depth)
-	skipnewlines = false
+	print("serializeTable name:", name, ",depth:", depth)
 	depth = depth or 0
 	local temp = string.rep(" ", depth)
 	if name then
@@ -144,9 +169,18 @@ function serializeTable(val, name, depth)
 	end
 
 	if type(val) == "table" then
-		temp = temp .. "{" .. "\n"
-		for k, v in pairs(val) do
-			temp = temp .. serializeTable(v, k, depth + 1) .. "," .. "\n"
+		if isSequentialTable(val) then
+			-- Treat as an array
+			temp = temp .. "{" .. "\n"
+			for _, v in ipairs(val) do
+				temp = temp .. serializeTable(v, nil, depth + 1) .. "," .. "\n"
+			end
+		else
+			-- Treat as a map
+			temp = temp .. "{" .. "\n"
+			for k, v in pairs(val) do
+				temp = temp .. serializeTable(v, k, depth + 1) .. "," .. "\n"
+			end
 		end
 		temp = temp .. string.rep(" ", depth) .. "}"
 	elseif type(val) == "number" then
@@ -160,7 +194,8 @@ end
 
 function saveTable(t, filename)
 	local file = io.open(filename, "w")
-	file:write("return " .. serializeTable(t))
+	-- file:write("return " .. serializeTable(t))
+	file:write("return " .. hs.inspect(t))
 	file:close()
 end
 
@@ -173,6 +208,16 @@ function loadTable(filename)
 	end
 end
 
+function findExistingShortcut(code, table)
+	for index, match in ipairs(table) do
+		local key = match[1]
+		local val = match[2]
+		if compareIndexable(key, code) then
+			return index
+		end
+	end
+	return nil
+end
 --------------------------------------------
 --   ___ ___  _ __ | |_ _____  _| |_ ___  --
 --  / __/ _ \| '_ \| __/ _ \ \/ / __/ __| --
@@ -182,7 +227,8 @@ end
 
 matches = loadTable("matches.lua")
 table.insert(matches, { { "s", "p" }, { { app = "Spotify", title = "Spotify Premium" } } })
-table.insert(matches, {
+matchFunctions = {}
+table.insert(matchFunctions, {
 	{ "space", "a" }, -- needs to match codes after, or get another way of inputting code
 	function()
 		-- get current window
@@ -190,52 +236,100 @@ table.insert(matches, {
 		local app = win:application():title()
 		local title = win:title()
 		-- input user code
-		local res, userText = hs.dialog.textPrompt(app .. " >> " .. title, "")
-		hs.alert(userText)
-		hs.dialog.blockAlert(
-			"test\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\n",
-			""
-		)
+		local res, newCode = hs.dialog.textPrompt(app .. " >> " .. title, "input code", "", "Add", "Cancel")
+		if res == "Cancel" then
+			return
+		end
 
-		-- hs.dialog.blockAlert(userText, "")
-		-- check if code is currently in use and if so, ask if user wants to overwrite (if not, abort)
-		-- add the setting. remove the old one if it exists
-		-- write to matches.lua
-		-- reload hammerspoon
+		local existingFunctionShortcut = findExistingShortcut(newCode, matchFunctions)
+		if existingFunctionShortcut then
+			hs.dialog.blockAlert("That shortcut already belongs to a function.", "")
+			return
+		end
+
+		local existingShortcut = findExistingShortcut(newCode, matches)
+		if existingShortcut == nil then
+			addShortcut(win, newCode)
+			saveTable(matches, "matches.lua")
+		else
+			local res2, choice = hs.dialog.textPrompt(
+				"That shortcut already exists: " .. hs.inspect(matches[existingShortcut][2]),
+				"[A]ppend, [R]eplace, or cancel",
+				"",
+				"OK",
+				"Cancel"
+			)
+			if res2 == "Cancel" then
+				return
+			elseif string.lower(choice) == "a" then
+				appendShortcut(win, newCode, existingShortcut)
+			elseif string.lower(choice) == "r" then
+				replaceShortcut(win, newCode, existingShortcut)
+			end
+		end
+
+		-- print("res:", res)
+		-- hs.alert(app .. title .. code)
+		-- hs.dialog.blockAlert(
+		-- "test\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\n",
+		-- ""
+		-- )
 	end,
 })
+
+function addShortcut(win, code)
+	local newWindow = { app = win:application():title(), title = win:title() }
+	table.insert(matches, { code, { newWindow } })
+	print("matches with new code hopefully added:", hs.inspect(matches))
+end
+
+function appendShortcut(win, code, index)
+	print("appendShortcut")
+	local newWindow = { app = win:application():title(), title = win:title() }
+	table.insert(matches[index][2], newWindow)
+end
+
+function replaceShortcut(win, code, index)
+	print("replaceShortcut")
+	local newWindow = { app = win:application():title(), title = win:title() }
+	matches[index][2] = { newWindow }
+end
 
 function handleCapturedSequence(sequence)
 	print("Captured sequence:", hs.inspect(sequence))
 	for _, match in ipairs(matches) do
 		local keys = match[1]
-		local winsOrFunc = match[2]
-		if compareArrays(sequence, keys) then
-			if type(winsOrFunc) == "table" then
-				for _, win in ipairs(winsOrFunc) do
-					goToWindow(win)
-				end
-			else
-				winsOrFunc()
+		local wins = match[2]
+		if compareIndexable(sequence, keys) then
+			for _, win in ipairs(wins) do
+				goToWindow(win)
 			end
-			return
+		end
+	end
+	for _, match in ipairs(matchFunctions) do
+		local keys = match[1]
+		local func = match[2]
+		if compareIndexable(sequence, keys) then
+			func()
 		end
 	end
 end
 
 function goToWindow(win)
-	local orderedWindows = hs.window.orderedWindows()
-	if _goToWindow(win.app, win.title, orderedWindows) then
-		return
-	end
+	-- local orderedWindows = hs.window.orderedWindows()
+	-- if _goToWindow(win.app, win.title, orderedWindows) then
+	-- 	return
+	-- end
 	local allWindows = hs.window.allWindows()
 	_goToWindow(win.app, win.title, allWindows)
 end
 
 function _goToWindow(app, title, windows)
-	-- title =
 	for _, win in ipairs(windows) do
+		print(win:application():title(), " - ", win:title())
 		if win:title() == title and win:application():title() == app then
+			print("  match")
+			win:unminimize()
 			win:focus()
 			return true
 		end
@@ -249,6 +343,7 @@ function copyCurrentWindow()
 	local title = win:title()
 	local str = '{ app = "' .. app .. '", title = "' .. title .. '"}'
 	hs.pasteboard.writeObjects(str)
+	print(str)
 end
 
 hs.hotkey.bind({ "ctrl", "alt", "cmd" }, "W", copyCurrentWindow)
