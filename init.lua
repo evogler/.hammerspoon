@@ -218,6 +218,13 @@ function findExistingShortcut(code, table)
 	end
 	return nil
 end
+
+function removeExtraText(str)
+	local res = str
+	res = string.gsub(res, "%- Audio playing %-", "-")
+	return res
+end
+
 --------------------------------------------
 --   ___ ___  _ __ | |_ _____  _| |_ ___  --
 --  / __/ _ \| '_ \| __/ _ \ \/ / __/ __| --
@@ -227,71 +234,66 @@ end
 
 matches = loadTable("matches.lua")
 table.insert(matches, { { "s", "p" }, { { app = "Spotify", title = "Spotify Premium" } } })
+
+function handleAddShortcut()
+	local win = hs.window.frontmostWindow()
+	local app = win:application():title()
+	local title = removeExtraText(win:title())
+
+	local res, newCode = hs.dialog.textPrompt(app .. " >> " .. title, "input code", "", "Add", "Cancel")
+	if res == "Cancel" then
+		return
+	end
+
+	local existingFunctionShortcut = findExistingShortcut(newCode, matchFunctions)
+	if existingFunctionShortcut then
+		hs.dialog.blockAlert("That shortcut already belongs to a function.", "")
+		return
+	end
+
+	local existingShortcut = findExistingShortcut(newCode, matches)
+	if existingShortcut == nil then
+		addShortcut(app, title, newCode)
+		saveTable(matches, "matches.lua")
+	else
+		local res2, choice = hs.dialog.textPrompt(
+			"That shortcut already exists: " .. hs.inspect(matches[existingShortcut][2]),
+			"[A]ppend, [R]eplace, or cancel",
+			"",
+			"OK",
+			"Cancel"
+		)
+		if res2 == "Cancel" then
+			return
+		elseif string.lower(choice) == "a" then
+			appendShortcut(app, title, existingShortcut)
+		elseif string.lower(choice) == "r" then
+			replaceShortcut(app, title, existingShortcut)
+		end
+	end
+end
+
 matchFunctions = {}
 table.insert(matchFunctions, {
-	{ "space", "a" }, -- needs to match codes after, or get another way of inputting code
-	function()
-		-- get current window
-		local win = hs.window.frontmostWindow()
-		local app = win:application():title()
-		local title = win:title()
-		-- input user code
-		local res, newCode = hs.dialog.textPrompt(app .. " >> " .. title, "input code", "", "Add", "Cancel")
-		if res == "Cancel" then
-			return
-		end
-
-		local existingFunctionShortcut = findExistingShortcut(newCode, matchFunctions)
-		if existingFunctionShortcut then
-			hs.dialog.blockAlert("That shortcut already belongs to a function.", "")
-			return
-		end
-
-		local existingShortcut = findExistingShortcut(newCode, matches)
-		if existingShortcut == nil then
-			addShortcut(win, newCode)
-			saveTable(matches, "matches.lua")
-		else
-			local res2, choice = hs.dialog.textPrompt(
-				"That shortcut already exists: " .. hs.inspect(matches[existingShortcut][2]),
-				"[A]ppend, [R]eplace, or cancel",
-				"",
-				"OK",
-				"Cancel"
-			)
-			if res2 == "Cancel" then
-				return
-			elseif string.lower(choice) == "a" then
-				appendShortcut(win, newCode, existingShortcut)
-			elseif string.lower(choice) == "r" then
-				replaceShortcut(win, newCode, existingShortcut)
-			end
-		end
-
-		-- print("res:", res)
-		-- hs.alert(app .. title .. code)
-		-- hs.dialog.blockAlert(
-		-- "test\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\ntest\n",
-		-- ""
-		-- )
-	end,
+	{ "space", "a" },
+	handleAddShortcut, -- needs to match codes after, or get another way of inputting code
 })
 
-function addShortcut(win, code)
-	local newWindow = { app = win:application():title(), title = win:title() }
+function addShortcut(app, title, code)
+	local newWindow = { app = app, title = title }
 	table.insert(matches, { code, { newWindow } })
 	print("matches with new code hopefully added:", hs.inspect(matches))
 end
 
-function appendShortcut(win, code, index)
+function appendShortcut(app, title, index)
 	print("appendShortcut")
-	local newWindow = { app = win:application():title(), title = win:title() }
+	local newWindow = { app = app, title = title }
 	table.insert(matches[index][2], newWindow)
 end
 
-function replaceShortcut(win, code, index)
+function replaceShortcut(app, title, index)
 	print("replaceShortcut")
-	local newWindow = { app = win:application():title(), title = win:title() }
+	local newWindow = { app = app, title = title }
 	matches[index][2] = { newWindow }
 end
 
@@ -321,14 +323,13 @@ function goToWindow(win)
 	-- 	return
 	-- end
 	local allWindows = hs.window.allWindows()
-	_goToWindow(win.app, win.title, allWindows)
+	_goToWindow(win.app, removeExtraText(win.title), allWindows)
 end
 
 function _goToWindow(app, title, windows)
+	print("_goToWindow title: ", title)
 	for _, win in ipairs(windows) do
-		print(win:application():title(), " - ", win:title())
-		if win:title() == title and win:application():title() == app then
-			print("  match")
+		if removeExtraText(win:title()) == title and win:application():title() == app then
 			win:unminimize()
 			win:focus()
 			return true
