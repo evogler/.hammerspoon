@@ -51,7 +51,7 @@ return { { { "4" }, { {
         title = "monkey - Google Chrome"
       } } }, { { "o" }, { {
         app = "Obsidian",
-        title = "Dogs & Owners - Obsidian Vault - Obsidian v0.15.9"
+        title = "hammerspoon recreating of contexts app - Obsidian Vault - Obsidian v0.15.9"
       } } }, { { "p", "l" }, { {
         app = "Google Chrome",
         title = "programming languages - Google Chrome"
@@ -69,11 +69,32 @@ return { { { "4" }, { {
         title = "weather - Google Chrome"
       } } }, { { "x" }, { {
         app = "iTerm2",
-        title = "python3 -m http.server 8002"
+        title = "x"
       } } }, { { "s", "p" }, { {
         app = "Spotify",
         title = "Spotify Premium"
       } } }, { "ts", { {
         app = "Google Chrome",
         title = "Text Shirts - Design Your Own Text Shirts Online - Google Chrome (Incognito)"
+      } } }, { { "s", "p" }, { {
+        app = "Spotify",
+        title = "Spotify Premium"
+      } } }, { "pk", { {
+        app = "Google Chrome",
+        title = "pkms - Google Chrome"
+      } } }, { "mov", { {
+        app = "Google Chrome",
+        title = "movie - Google Chrome"
+      } } }, { { "s", "p" }, { {
+        app = "Spotify",
+        title = "Spotify Premium"
+      } } }, { "", { {
+        app = "iTerm2",
+        title = "hs"
+      } } }, { "xxx", { {
+        app = "iTerm2",
+        title = "hs"
+      } } }, { "1", { {
+        app = "Activity Monitor",
+        title = "Activity Monitor – All Processes"
       } } } }

@@ -1,6 +1,19 @@
 -- Table to hold the current layout snapshot
 local currentLayout = {}
 
+lastApplication = hs.application.frontmostApplication()
+
+function saveAndFocusHammerspoon()
+	lastApplication = hs.application.frontmostApplication()
+	hs.application.get("Hammerspoon"):activate()
+end
+
+function goBackToSavedWindow()
+	if lastApplication then
+		lastApplication:activate()
+	end
+end
+
 function snapshotCurrentLayout()
 	local windows = hs.window.orderedWindows()
 	local layout = {}
@@ -219,6 +232,21 @@ function findExistingShortcut(code, table)
 	return nil
 end
 
+function findWindowInExistingShortcuts(win)
+	local res = {}
+	local title = win:title()
+	local app = win:application():title()
+	for outerIndex, match in ipairs(matches) do
+		local windows = match[2]
+		for innerIndex, matchWin in ipairs(windows) do
+			if app == matchWin.app and title == matchWin.title then
+				table.insert(res, { outerIndex, innerIndex })
+			end
+		end
+	end
+	return res
+end
+
 function removeExtraText(str)
 	local res = str
 	res = string.gsub(res, "%- Audio playing %-", "-")
@@ -273,11 +301,77 @@ function handleAddShortcut()
 	end
 end
 
-matchFunctions = {}
-table.insert(matchFunctions, {
-	{ "space", "a" },
-	handleAddShortcut, -- needs to match codes after, or get another way of inputting code
-})
+function inspectWindow(win)
+	local id = win:id() or "NOID"
+	local title = win:title()
+	local app = win:application():name()
+	local frame = win:frame()
+	local screen = win:screen():name()
+
+	-- Prepare the information string
+	local info = string.format(
+		"Window ID: %s\nTitle: %s\nApplication: %s\nFrame: %s\nScreen: %s",
+		id,
+		title,
+		app,
+		hs.inspect(frame),
+		screen
+	)
+	return info
+end
+
+function handleShowUnsetWindows()
+	local windows = hs.window.allWindows()
+	local unsetWindows = {}
+	for _, win in ipairs(windows) do
+		local matches = findWindowInExistingShortcuts(win)
+		if #matches == 0 then
+			table.insert(unsetWindows, win)
+		end
+	end
+	table.sort(unsetWindows, function(a, b)
+		return (a:application():title() .. a:title()) < (b:application():title() .. b:title())
+	end)
+	local winStr = ""
+	for index, win in ipairs(unsetWindows) do
+		winStr = winStr .. "\n" .. index .. ". " .. win:application():title() .. " -> " .. win:title()
+	end
+
+	print(winStr)
+	-- test <
+	saveAndFocusHammerspoon()
+	-- > test
+	local res, userInput = hs.dialog.textPrompt("", winStr, "", "OK", "Cancel")
+	-- test <
+	goBackToSavedWindow()
+	-- > test
+	if res == "Cancel" then
+		return
+	end
+
+	local command = string.match(userInput, "%a")
+	local number = string.match(userInput, "%d+")
+	if number == nil then
+		return
+	end
+	number = tonumber(number)
+	if number > #unsetWindows or number <= 0 then
+		return
+	end
+	local targetWin = { app = unsetWindows[number]:application():title(), title = unsetWindows[number]:title() }
+	print("trying to go to:", hs.inspect(targetWin))
+	goToWindow(targetWin)
+end
+
+matchFunctions = {
+	{
+		{ "space", "a" },
+		handleAddShortcut, -- needs to match codes after, or get another way of inputting code
+	},
+	{ { "space", "r" }, hs.reload },
+	{ { "space", "c" }, hs.console.clearConsole },
+	{ { "space", "u" }, handleShowUnsetWindows },
+}
 
 function addShortcut(app, title, code)
 	local newWindow = { app = app, title = title }
@@ -299,6 +393,7 @@ end
 
 function handleCapturedSequence(sequence)
 	print("Captured sequence:", hs.inspect(sequence))
+
 	for _, match in ipairs(matches) do
 		local keys = match[1]
 		local wins = match[2]
@@ -308,6 +403,7 @@ function handleCapturedSequence(sequence)
 			end
 		end
 	end
+
 	for _, match in ipairs(matchFunctions) do
 		local keys = match[1]
 		local func = match[2]
@@ -335,6 +431,15 @@ function _goToWindow(app, title, windows)
 			return true
 		end
 	end
+
+	for _, win in ipairs(windows) do
+		if win:application():title() == app then
+			win:unminimize()
+			win:focus()
+			return true
+		end
+	end
+
 	return false
 end
 
@@ -355,7 +460,7 @@ local ignoreBecauseOfModifier = false
 
 local function handleKeyEvent(event)
 	local currentModifiers = hs.eventtap.checkKeyboardModifiers()
-	print("  currentModifiers:", mapToString(currentModifiers))
+	-- print("  currentModifiers:", mapToString(currentModifiers))
 	if
 		mapContains(currentModifiers, "cmd")
 		or (mapContains(currentModifiers, "alt") and not isRightOptionPressed)
@@ -368,7 +473,7 @@ local function handleKeyEvent(event)
 
 	local keyCode = event:getKeyCode()
 	if keyCode ~= 61 and isRightOptionPressed == false then
-		print("quick ignore")
+		-- print("quick ignore")
 		return false
 	end
 
