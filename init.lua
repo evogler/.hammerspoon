@@ -337,14 +337,9 @@ function handleShowUnsetWindows()
 		winStr = winStr .. "\n" .. index .. ". " .. win:application():title() .. " -> " .. win:title()
 	end
 
-	print(winStr)
-	-- test <
 	saveAndFocusHammerspoon()
-	-- > test
 	local res, userInput = hs.dialog.textPrompt("", winStr, "", "OK", "Cancel")
-	-- test <
 	goBackToSavedWindow()
-	-- > test
 	if res == "Cancel" then
 		return
 	end
@@ -359,8 +354,46 @@ function handleShowUnsetWindows()
 		return
 	end
 	local targetWin = { app = unsetWindows[number]:application():title(), title = unsetWindows[number]:title() }
-	print("trying to go to:", hs.inspect(targetWin))
 	goToWindow(targetWin)
+end
+
+function handleShowSetWindows()
+	local windows = hs.window.allWindows()
+	local unsetWindows = {}
+	for _, win in ipairs(windows) do
+		local matchIndexes = findWindowInExistingShortcuts(win)
+		if #matchIndexes >= 1 then
+			table.insert(unsetWindows, { indexes = matchIndexes, win = win })
+		end
+	end
+	table.sort(unsetWindows, function(a, b)
+		return (a.win:application():title() .. a.win:title()) < (b.win:application():title() .. b.win:title())
+	end)
+	local winStr = ""
+	for index, win in ipairs(unsetWindows) do
+		local i = win.indexes
+		local x = hs.inspect(matches[i[1][1]][1])
+		winStr = winStr .. "\n" .. x .. ". " .. win.win:application():title() .. " -> " .. win.win:title()
+	end
+
+	saveAndFocusHammerspoon()
+	local res, userInput = hs.dialog.textPrompt("", winStr, "", "OK", "Cancel")
+	goBackToSavedWindow()
+	if res == "Cancel" then
+		return
+	end
+
+	-- local command = string.match(userInput, "%a")
+	-- local number = string.match(userInput, "%d+")
+	-- if number == nil then
+	-- 	return
+	-- end
+	-- number = tonumber(number)
+	-- if number > #unsetWindows or number <= 0 then
+	-- 	return
+	-- end
+	-- local targetWin = { app = unsetWindows[number].win:application():title(), title = unsetWindows[number].win:title() }
+	-- goToWindow(targetWin)
 end
 
 matchFunctions = {
@@ -371,6 +404,7 @@ matchFunctions = {
 	{ { "space", "r" }, hs.reload },
 	{ { "space", "c" }, hs.console.clearConsole },
 	{ { "space", "u" }, handleShowUnsetWindows },
+	{ { "space", "w" }, handleShowSetWindows },
 }
 
 function addShortcut(app, title, code)

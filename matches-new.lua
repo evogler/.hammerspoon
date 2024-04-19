@@ -1,107 +1,107 @@
 return {
-	{ { "4" }, { {
+	{ "4", { {
 		app = "Google Chrome",
 		title = "4 - Google Chrome",
 	} } },
-	{ { "a" }, { {
+	{ "a", { {
 		app = "Activity Monitor",
 		title = "Activity Monitor – All Processes",
 	} } },
-	{ { "a", "n" }, { {
+	{ "an", { {
 		app = "Anki",
 		title = "User 1 - Anki",
 	} } },
-	{ { "b" }, { {
+	{ "b", { {
 		app = "Bear",
 		title = "Bear",
 	} } },
-	{ { "b", "b" }, { {
+	{ "bb", { {
 		app = "Bear",
 		title = "vim to memo",
 	} } },
-	{ { "c" }, { {
+	{ "c", { {
 		app = "Google Chrome",
 		title = "calendar - Google Chrome",
 	} } },
-	{ { "f" }, { {
+	{ "f", { {
 		app = "Finder",
 		title = "Downloads",
 	} } },
-	{ { "g" }, { {
+	{ "g", { {
 		app = "Google Chrome",
 		title = "general - Google Chrome",
 	} } },
-	{ { "g", "c" }, { {
+	{ "gc", { {
 		app = "Google Chrome",
 		title = "gchat - Google Chrome",
 	} } },
-	{ { "g", "l" }, { {
+	{ "gl", { {
 		app = "Google Chrome",
 		title = "gleam - Google Chrome",
 	} } },
-	{ { "g", "m" }, { {
+	{ "gm", { {
 		app = "Google Chrome",
 		title = "gmail - Google Chrome",
 	} } },
-	{ { "h" }, { {
+	{ "h", { {
 		app = "iTerm2",
 		title = "hs",
 	} } },
-	{ { "h", "c" }, { {
+	{ "hc", { {
 		app = "Hammerspoon",
 		title = "Hammerspoon Console",
 	} } },
-	{ { "i" }, { {
+	{ "i", { {
 		app = "iReal Pro",
 		title = "Library",
 	} } },
-	{ { "l" }, { {
+	{ "l", { {
 		app = "Google Chrome",
 		title = "local - Google Chrome",
 	} } },
-	{ { "m", "e" }, { {
+	{ "me", { {
 		app = "Google Chrome",
 		title = "messages - Google Chrome",
 	} } },
-	{ { "m", "o" }, { {
+	{ "mo", { {
 		app = "Google Chrome",
 		title = "monkey - Google Chrome",
 	} } },
 	{
-		{ "o" },
+		"o",
 		{ {
 			app = "Obsidian",
 			title = "Dogs & Owners - Obsidian Vault - Obsidian v0.15.9",
 		} },
 	},
 	{
-		{ "p", "l" },
+		"pl",
 		{ {
 			app = "Google Chrome",
 			title = "programming languages - Google Chrome",
 		} },
 	},
-	{ { "r" }, { {
+	{ "r", { {
 		app = "Google Chrome",
 		title = "research - Google Chrome",
 	} } },
-	{ { "v", "v" }, { {
+	{ "vv", { {
 		app = "Google Chrome",
 		title = "vim - Google Chrome",
 	} } },
-	{ { "w" }, { {
+	{ "w", { {
 		app = "Google Chrome",
 		title = "whatsapp - Google Chrome",
 	} } },
-	{ { "w", "e" }, { {
+	{ "we", { {
 		app = "Google Chrome",
 		title = "weather - Google Chrome",
 	} } },
-	{ { "x" }, { {
+	{ "x", { {
 		app = "iTerm2",
 		title = "python3 -m http.server 8002",
 	} } },
-	{ { "s", "p" }, { {
+	{ "sp", { {
 		app = "Spotify",
 		title = "Spotify Premium",
 	} } },
@@ -119,4 +119,3 @@ return {
 		},
 	},
 }
-
