@@ -492,7 +492,7 @@ local capturedKeys = {}
 local isRightOptionPressed = false
 local ignoreBecauseOfModifier = false
 
-local function handleKeyEvent(event)
+function handleKeyEvent(event)
 	local currentModifiers = hs.eventtap.checkKeyboardModifiers()
 	-- print("  currentModifiers:", mapToString(currentModifiers))
 	if
